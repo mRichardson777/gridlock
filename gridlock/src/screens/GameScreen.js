@@ -14,29 +14,28 @@ export default function GameScreen({ onSessionEnd }) {
   const [puzzleIndex, setPuzzleIndex] = useState(0);
   const [vehicles, setVehicles] = useState(() => (session[0]?.vehicles || []).map(v => ({ ...v })));
   const [history, setHistory] = useState([]);
-  const [results, setResults] = useState([]); // { solved: bool } per puzzle
+  const [results, setResults] = useState([]);
   const [puzzleSolved, setPuzzleSolved] = useState(false);
   const [started, setStarted] = useState(false);
-  const solveTimer = useRef(null);
 
-  // Flash animation for solved moment
-  const flashAnim = useRef(new Animated.Value(0)).current;
+  // Use refs to avoid stale closures
+  const puzzleIndexRef = useRef(0);
+  const resultsRef = useRef([]);
+  const solveTimer = useRef(null);
+  const sessionEndedRef = useRef(false);
+
+  const flashAnim = useRef(new Animated.Value(1)).current;
 
   const handleTimerExpire = useCallback(() => {
-    // Time's up — record current puzzle as unsolved and end session
-    setResults(prev => {
-      const final = [...prev, { solved: false }];
-      setTimeout(() => onSessionEnd(final), 300);
-      return final;
-    });
+    if (sessionEndedRef.current) return;
+    sessionEndedRef.current = true;
+    const final = [...resultsRef.current, { solved: false }];
+    onSessionEnd(final);
   }, [onSessionEnd]);
 
-  const { timeLeft, formatted, progress, urgency, running, start } = useTimer(
-    TOTAL_SECONDS,
-    handleTimerExpire
-  );
+  const { formatted, progress, urgency, start } = useTimer(TOTAL_SECONDS, handleTimerExpire);
 
-  // Load a puzzle by index — deep copy vehicles so state is fully fresh
+  // Load a fresh puzzle by index
   const loadPuzzle = useCallback((index) => {
     if (index >= session.length) return;
     setVehicles(session[index].vehicles.map(v => ({ ...v })));
@@ -44,27 +43,37 @@ export default function GameScreen({ onSessionEnd }) {
     setPuzzleSolved(false);
   }, [session]);
 
-  // Advance to next puzzle after solve
-  const advanceToNext = useCallback(() => {
-    const nextIndex = puzzleIndex + 1;
-    if (nextIndex >= session.length) {
-      // Completed all puzzles — end session early
-      setResults(prev => {
-        const final = [...prev, { solved: true }];
-        setTimeout(() => onSessionEnd(final), 600);
-        return final;
-      });
-    } else {
-      setResults(prev => [...prev, { solved: true }]);
-      setPuzzleIndex(nextIndex);
-      loadPuzzle(nextIndex);
-    }
-  }, [puzzleIndex, session.length, loadPuzzle, onSessionEnd]);
+  // Watch puzzleSolved — when true, wait then advance
+  useEffect(() => {
+    if (!puzzleSolved) return;
+
+    solveTimer.current = setTimeout(() => {
+      const currentIndex = puzzleIndexRef.current;
+      const nextIndex = currentIndex + 1;
+      const newResults = [...resultsRef.current, { solved: true }];
+
+      resultsRef.current = newResults;
+      setResults(newResults);
+
+      if (nextIndex >= session.length) {
+        // All puzzles done!
+        if (!sessionEndedRef.current) {
+          sessionEndedRef.current = true;
+          onSessionEnd(newResults);
+        }
+      } else {
+        puzzleIndexRef.current = nextIndex;
+        setPuzzleIndex(nextIndex);
+        loadPuzzle(nextIndex);
+      }
+    }, 700);
+
+    return () => clearTimeout(solveTimer.current);
+  }, [puzzleSolved, session.length, loadPuzzle, onSessionEnd]);
 
   const handleMove = useCallback((vehicleId, direction) => {
     if (puzzleSolved) return;
 
-    // Start timer on first move
     if (!started) {
       setStarted(true);
       start();
@@ -72,22 +81,19 @@ export default function GameScreen({ onSessionEnd }) {
 
     setVehicles(prev => {
       const next = applyMove(prev, vehicleId, direction);
-      if (next !== prev) {
-        setHistory(h => [...h, prev]);
-        if (isSolved(next)) {
-          setPuzzleSolved(true);
-          // Flash the board
-          Animated.sequence([
-            Animated.timing(flashAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-            Animated.timing(flashAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-          ]).start();
-          // Brief pause then advance
-          solveTimer.current = setTimeout(advanceToNext, 700);
-        }
+      if (next === prev) return prev;
+      setHistory(h => [...h, prev]);
+      if (isSolved(next)) {
+        setPuzzleSolved(true);
+        // Flash animation
+        Animated.sequence([
+          Animated.timing(flashAnim, { toValue: 0.3, duration: 120, useNativeDriver: true }),
+          Animated.timing(flashAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        ]).start();
       }
       return next;
     });
-  }, [puzzleSolved, started, start, advanceToNext, flashAnim]);
+  }, [puzzleSolved, started, start, flashAnim]);
 
   const handleUndo = useCallback(() => {
     if (history.length === 0 || puzzleSolved) return;
@@ -95,15 +101,11 @@ export default function GameScreen({ onSessionEnd }) {
     setHistory(h => h.slice(0, -1));
   }, [history, puzzleSolved]);
 
-  // Cleanup on unmount
-  useEffect(() => () => {
-    if (solveTimer.current) clearTimeout(solveTimer.current);
-  }, []);
+  useEffect(() => () => clearTimeout(solveTimer.current), []);
 
   const currentPuzzle = session[puzzleIndex];
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
-  // Timer bar color
   const timerColor = urgency === 'critical' ? colors.redCar
     : urgency === 'warning' ? colors.car3
     : colors.success;
@@ -118,39 +120,25 @@ export default function GameScreen({ onSessionEnd }) {
 
       {/* Timer bar */}
       <View style={styles.timerBarBg}>
-        <Animated.View
-          style={[
-            styles.timerBarFill,
-            {
-              width: `${progress * 100}%`,
-              backgroundColor: timerColor,
-            },
-          ]}
-        />
+        <View style={[styles.timerBarFill, { width: `${progress * 100}%`, backgroundColor: timerColor }]} />
       </View>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
-        {/* Puzzle dots */}
         <View style={styles.puzzleDots}>
           {session.map((_, i) => {
             const isDone = i < results.length;
             const isCurrent = i === puzzleIndex;
             const wasSolved = isDone && results[i]?.solved;
             return (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  isCurrent && styles.dotCurrent,
-                  isDone && (wasSolved ? styles.dotSolved : styles.dotFailed),
-                ]}
-              />
+              <View key={i} style={[
+                styles.dot,
+                isCurrent && styles.dotCurrent,
+                isDone && (wasSolved ? styles.dotSolved : styles.dotFailed),
+              ]} />
             );
           })}
         </View>
-
-        {/* Timer */}
         <View style={styles.timerDisplay}>
           <Text style={[styles.timerText, urgency === 'critical' && styles.timerCritical]}>
             {started ? formatted : `${TOTAL_SECONDS}s`}
@@ -162,7 +150,7 @@ export default function GameScreen({ onSessionEnd }) {
       {/* Puzzle label */}
       <View style={styles.puzzleLabel}>
         <Text style={styles.puzzleLabelText}>
-          Puzzle {Math.min(puzzleIndex + 1, session.length)} of {session.length}
+          Puzzle {puzzleIndex + 1} of {session.length}
         </Text>
         <View style={styles.difficultyBadge}>
           <Text style={styles.difficultyText}>{currentPuzzle?.difficulty?.toUpperCase()}</Text>
@@ -170,12 +158,8 @@ export default function GameScreen({ onSessionEnd }) {
       </View>
 
       {/* Game Board */}
-      <Animated.View style={[styles.boardContainer, { opacity: flashAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }]}>
-        <GameBoard
-          vehicles={vehicles}
-          onMove={handleMove}
-          solved={puzzleSolved}
-        />
+      <Animated.View style={[styles.boardContainer, { opacity: flashAnim }]}>
+        <GameBoard vehicles={vehicles} onMove={handleMove} solved={puzzleSolved} />
       </Animated.View>
 
       {/* Start hint */}
@@ -200,10 +184,7 @@ export default function GameScreen({ onSessionEnd }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     alignItems: 'center',
     paddingTop: spacing.md,
@@ -211,25 +192,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 4,
-    color: colors.textPrimary,
-  },
-  date: {
-    ...typography.bodySmall,
-    marginTop: 2,
-  },
-  timerBarBg: {
-    height: 4,
-    backgroundColor: colors.border,
-    width: '100%',
-  },
-  timerBarFill: {
-    height: 4,
-    borderRadius: 2,
-  },
+  title: { fontSize: 22, fontWeight: '800', letterSpacing: 4, color: colors.textPrimary },
+  date: { ...typography.bodySmall, marginTop: 2 },
+  timerBarBg: { height: 4, backgroundColor: colors.border, width: '100%' },
+  timerBarFill: { height: 4, borderRadius: 2 },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -237,103 +203,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  puzzleDots: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.border,
-  },
-  dotCurrent: {
-    backgroundColor: colors.textMuted,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dotSolved: {
-    backgroundColor: colors.redCar,
-  },
-  dotFailed: {
-    backgroundColor: colors.gridLine,
-  },
-  timerDisplay: {
-    alignItems: 'center',
-  },
-  timerText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    fontVariant: ['tabular-nums'],
-  },
-  timerCritical: {
-    color: colors.redCar,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
+  puzzleDots: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.border },
+  dotCurrent: { backgroundColor: colors.textMuted, width: 12, height: 12, borderRadius: 6 },
+  dotSolved: { backgroundColor: colors.redCar },
+  dotFailed: { backgroundColor: colors.gridLine },
+  timerDisplay: { alignItems: 'center' },
+  timerText: { fontSize: 28, fontWeight: '700', color: colors.textPrimary },
+  timerCritical: { color: colors.redCar },
+  statLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1, color: colors.textMuted, marginTop: 2 },
   puzzleLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingBottom: spacing.sm,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: spacing.sm, paddingBottom: spacing.sm,
   },
-  puzzleLabelText: {
-    ...typography.bodySmall,
-  },
+  puzzleLabelText: { ...typography.bodySmall },
   difficultyBadge: {
     backgroundColor: colors.accentLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full,
   },
-  difficultyText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    color: colors.accent,
-  },
-  boardContainer: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-  },
-  startHint: {
-    alignItems: 'center',
-    paddingTop: spacing.md,
-  },
-  startHintText: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: spacing.lg,
-  },
+  difficultyText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.accent },
+  boardContainer: { alignItems: 'center', paddingHorizontal: spacing.md },
+  startHint: { alignItems: 'center', paddingTop: spacing.md },
+  startHintText: { ...typography.bodySmall, color: colors.textMuted, fontStyle: 'italic' },
+  controls: { flexDirection: 'row', justifyContent: 'center', paddingTop: spacing.lg },
   controlBtn: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, backgroundColor: colors.surface,
     ...shadows.card,
   },
-  controlBtnDisabled: {
-    opacity: 0.4,
-  },
-  controlBtnText: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
+  controlBtnDisabled: { opacity: 0.4 },
+  controlBtnText: { ...typography.body, fontWeight: '600', color: colors.textSecondary },
 });
