@@ -95,6 +95,9 @@ export default function GameScreen() {
             <TouchableOpacity style={styles.shareBtn}>
               <Text style={styles.shareBtnText}>Share Result</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.playAgainBtn} onPress={handleReset}>
+              <Text style={styles.playAgainText}>Play Again</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -219,10 +222,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
+    marginBottom: spacing.sm,
   },
   shareBtnText: {
     color: '#FFF',
     fontWeight: '700',
+    fontSize: 16,
+  },
+  playAgainBtn: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  playAgainText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
     fontSize: 16,
   },
 });

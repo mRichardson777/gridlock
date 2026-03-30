@@ -75,7 +75,7 @@ export function applyMove(vehicles, vehicleId, direction) {
 
 /**
  * Check if the puzzle is solved.
- * The player car must have a clear path to the right edge.
+ * The player car must have physically reached the right exit edge.
  */
 export function isSolved(vehicles) {
   const player = vehicles.find(v => v.isPlayer);
@@ -84,17 +84,8 @@ export function isSolved(vehicles) {
   // Player car must be horizontal and in EXIT_ROW
   if (player.orientation !== 'H' || player.row !== EXIT_ROW) return false;
 
-  // Check if player car reaches the right edge
-  const rightEdge = player.col + player.length;
-  if (rightEdge < GRID_SIZE) {
-    // Check if path to exit is clear
-    const occupied = getOccupiedCells(vehicles, player.id);
-    for (let c = rightEdge; c < GRID_SIZE; c++) {
-      if (occupied.has(`${player.row},${c}`)) return false;
-    }
-  }
-
-  return true;
+  // Player car must have slid all the way to the right edge
+  return player.col + player.length >= GRID_SIZE;
 }
 
 /**
