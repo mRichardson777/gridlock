@@ -12,7 +12,7 @@ export default function GameScreen({ onSessionEnd }) {
   const session = getTodaysSession();
 
   const [puzzleIndex, setPuzzleIndex] = useState(0);
-  const [vehicles, setVehicles] = useState(session[0]?.vehicles || []);
+  const [vehicles, setVehicles] = useState(() => (session[0]?.vehicles || []).map(v => ({ ...v })));
   const [history, setHistory] = useState([]);
   const [results, setResults] = useState([]); // { solved: bool } per puzzle
   const [puzzleSolved, setPuzzleSolved] = useState(false);
@@ -36,10 +36,10 @@ export default function GameScreen({ onSessionEnd }) {
     handleTimerExpire
   );
 
-  // Load a puzzle by index
+  // Load a puzzle by index — deep copy vehicles so state is fully fresh
   const loadPuzzle = useCallback((index) => {
     if (index >= session.length) return;
-    setVehicles(session[index].vehicles);
+    setVehicles(session[index].vehicles.map(v => ({ ...v })));
     setHistory([]);
     setPuzzleSolved(false);
   }, [session]);
@@ -162,7 +162,7 @@ export default function GameScreen({ onSessionEnd }) {
       {/* Puzzle label */}
       <View style={styles.puzzleLabel}>
         <Text style={styles.puzzleLabelText}>
-          Puzzle {puzzleIndex + 1} of {session.length}
+          Puzzle {Math.min(puzzleIndex + 1, session.length)} of {session.length}
         </Text>
         <View style={styles.difficultyBadge}>
           <Text style={styles.difficultyText}>{currentPuzzle?.difficulty?.toUpperCase()}</Text>
