@@ -12,7 +12,6 @@ export default function ResultsScreen({ results, streak, onPlayAgain }) {
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
-  // Animate cards in
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
 
@@ -45,18 +44,18 @@ export default function ResultsScreen({ results, streak, onPlayAgain }) {
         <Text style={styles.title}>GRIDLOCK</Text>
         <Text style={styles.date}>{today}</Text>
 
-        {/* Score */}
+        {/* Score card */}
         <View style={styles.scoreCard}>
           <Text style={styles.scoreNumber}>{solvedCount}</Text>
           <Text style={styles.scoreTotal}>/ {total} puzzles</Text>
           <Text style={styles.scoreLabel}>{scoreLabel}</Text>
         </View>
 
-        {/* Share grid — Wordle style */}
+        {/* Share grid */}
         <View style={styles.shareGrid}>
           {results.map((r, i) => (
             <Text key={i} style={styles.shareEmoji}>
-              {r.solved ? '🟥' : '⬜'}
+              {r.solved ? '🟦' : '⬜'}
             </Text>
           ))}
         </View>
@@ -113,28 +112,29 @@ const styles = StyleSheet.create({
   },
   scoreCard: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.navy,
     borderRadius: radius.lg,
     padding: spacing.xl,
     width: '100%',
     marginBottom: spacing.lg,
-    ...shadows.card,
+    ...shadows.strong,
   },
   scoreNumber: {
     fontSize: 80,
     fontWeight: '800',
-    color: colors.redCar,
+    color: '#FFFFFF',
     lineHeight: 88,
   },
   scoreTotal: {
     fontSize: 22,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.6)',
     marginBottom: spacing.sm,
   },
   scoreLabel: {
-    ...typography.h3,
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
   },
   shareGrid: {
     flexDirection: 'row',
@@ -149,13 +149,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     marginBottom: spacing.lg,
+    backgroundColor: colors.goldLight,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
   },
   streakEmoji: {
-    fontSize: 22,
+    fontSize: 20,
   },
   streakText: {
-    ...typography.h3,
-    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.gold,
   },
   tomorrowCard: {
     backgroundColor: colors.successLight,
@@ -176,7 +181,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   shareBtn: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.navy,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: radius.md,

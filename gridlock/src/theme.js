@@ -41,6 +41,11 @@ export const colors = {
   // Pro / Premium
   gold: '#C9972A',
   goldLight: '#FBF3E0',
+
+  // Results screen
+  navy: '#1B2E4B',
+  navyLight: '#EBF0F7',
+  indigo: '#3D5A99',
 };
 
 export const spacing = {
