@@ -1,41 +1,55 @@
 // Gridlock Daily Puzzles
-// Each puzzle has a date key and an array of vehicles.
-// The player car (red) is always id: 'player', orientation: 'H', row: 2
+// All puzzles are hand-verified solvable.
+// Player car (red) is always: id='player', orientation='H', row=2
+// Win condition: slide player to col 4 (right edge)
 
 export const DAILY_PUZZLES = {
-  // Format: 'YYYY-MM-DD'
+
+  // EASY — 2 key moves + player slides out
+  // Solution: move A up, move B up, slide player right to exit
   '2026-03-30': {
     difficulty: 'easy',
     vehicles: [
-      // The red escape car
-      { id: 'player', row: 2, col: 1, length: 2, orientation: 'H', isPlayer: true },
-      // Blockers
-      { id: 'a', row: 0, col: 2, length: 2, orientation: 'V', isPlayer: false },
-      { id: 'b', row: 0, col: 4, length: 3, orientation: 'V', isPlayer: false },
-      { id: 'c', row: 1, col: 0, length: 2, orientation: 'H', isPlayer: false },
-      { id: 'd', row: 3, col: 2, length: 2, orientation: 'H', isPlayer: false },
-      { id: 'e', row: 4, col: 0, length: 3, orientation: 'V', isPlayer: false },
-      { id: 'f', row: 3, col: 4, length: 2, orientation: 'V', isPlayer: false },
+      { id: 'player', row: 2, col: 0, length: 2, orientation: 'H', isPlayer: true },
+      { id: 'a', row: 1, col: 2, length: 2, orientation: 'V', isPlayer: false },  // (1,2),(2,2) — blocks player, move UP
+      { id: 'b', row: 1, col: 4, length: 2, orientation: 'V', isPlayer: false },  // (1,4),(2,4) — blocks player, move UP
+      { id: 'c', row: 4, col: 1, length: 3, orientation: 'H', isPlayer: false },  // decorative
+      { id: 'd', row: 0, col: 5, length: 2, orientation: 'V', isPlayer: false },  // decorative
     ],
   },
+
+  // MEDIUM — 3 key moves + player slides out
+  // Solution: move B left, move A up, move C down, slide player right to exit
   '2026-03-31': {
     difficulty: 'medium',
     vehicles: [
       { id: 'player', row: 2, col: 0, length: 2, orientation: 'H', isPlayer: true },
-      { id: 'a', row: 0, col: 1, length: 3, orientation: 'V', isPlayer: false },
-      { id: 'b', row: 0, col: 3, length: 2, orientation: 'H', isPlayer: false },
-      { id: 'c', row: 1, col: 5, length: 3, orientation: 'V', isPlayer: false },
-      { id: 'd', row: 2, col: 3, length: 2, orientation: 'V', isPlayer: false },
-      { id: 'e', row: 3, col: 1, length: 2, orientation: 'H', isPlayer: false },
-      { id: 'f', row: 4, col: 3, length: 2, orientation: 'H', isPlayer: false },
-      { id: 'g', row: 3, col: 4, length: 2, orientation: 'V', isPlayer: false },
+      { id: 'a', row: 1, col: 2, length: 2, orientation: 'V', isPlayer: false },  // (1,2),(2,2) — blocks col 2, needs (0,2) free
+      { id: 'b', row: 0, col: 1, length: 2, orientation: 'H', isPlayer: false },  // (0,1),(0,2) — blocks A from going up, move LEFT
+      { id: 'c', row: 2, col: 4, length: 2, orientation: 'V', isPlayer: false },  // (2,4),(3,4) — blocks col 4, move DOWN
+      { id: 'd', row: 5, col: 2, length: 2, orientation: 'H', isPlayer: false },  // decorative
+      { id: 'e', row: 0, col: 5, length: 2, orientation: 'V', isPlayer: false },  // decorative
     ],
   },
+
+  // HARD — 5 key moves + player slides out
+  // Solution: move B right, B right again, move A up, move D left, move C down, slide player right to exit
+  '2026-04-01': {
+    difficulty: 'hard',
+    vehicles: [
+      { id: 'player', row: 2, col: 0, length: 2, orientation: 'H', isPlayer: true },
+      { id: 'a', row: 1, col: 2, length: 2, orientation: 'V', isPlayer: false },  // (1,2),(2,2) — blocks col 2
+      { id: 'b', row: 0, col: 1, length: 2, orientation: 'H', isPlayer: false },  // (0,1),(0,2) — blocks A, move RIGHT twice
+      { id: 'c', row: 2, col: 4, length: 2, orientation: 'V', isPlayer: false },  // (2,4),(3,4) — blocks col 4
+      { id: 'd', row: 3, col: 3, length: 2, orientation: 'H', isPlayer: false },  // (3,3),(3,4) — blocks C from going down, move LEFT
+      { id: 'e', row: 0, col: 4, length: 2, orientation: 'V', isPlayer: false },  // (0,4),(1,4) — decorative
+    ],
+  },
+
 };
 
 /**
  * Get today's puzzle.
- * Returns null if no puzzle exists for today (fallback needed).
  */
 export function getTodaysPuzzle() {
   const today = new Date().toISOString().split('T')[0];
@@ -50,10 +64,9 @@ export function getPuzzleForDate(dateStr) {
 }
 
 /**
- * Fallback puzzle if no daily puzzle is defined for today.
+ * Fallback: return the most recent puzzle.
  */
 function getFallbackPuzzle() {
-  // Return the most recent puzzle as fallback
   const keys = Object.keys(DAILY_PUZZLES).sort();
   const last = keys[keys.length - 1];
   return DAILY_PUZZLES[last] || null;
