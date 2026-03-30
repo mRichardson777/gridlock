@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { colors, spacing, typography, radius, shadows } from '../theme';
 import GameBoard from '../components/GameBoard';
@@ -10,6 +10,7 @@ export default function GameScreen() {
   const [vehicles, setVehicles] = useState(puzzle?.vehicles || []);
   const [history, setHistory] = useState([]);
   const [solved, setSolved] = useState(false);
+  const solveTimer = useRef(null);
 
   const handleMove = useCallback((vehicleId, direction) => {
     if (solved) return;
@@ -17,7 +18,10 @@ export default function GameScreen() {
       const next = applyMove(prev, vehicleId, direction);
       if (next !== prev) {
         setHistory(h => [...h, prev]);
-        if (isSolved(next)) setSolved(true);
+        if (isSolved(next)) {
+          // Small pause before showing the celebration
+          solveTimer.current = setTimeout(() => setSolved(true), 600);
+        }
       }
       return next;
     });
@@ -31,6 +35,7 @@ export default function GameScreen() {
   }, [history]);
 
   const handleReset = useCallback(() => {
+    if (solveTimer.current) clearTimeout(solveTimer.current);
     setVehicles(puzzle?.vehicles || []);
     setHistory([]);
     setSolved(false);
