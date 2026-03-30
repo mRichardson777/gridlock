@@ -19,4 +19,6 @@
 
 ## GitHub
 - Username: mRichardson777
-- Need to create the Gridlock repo and set up SSH/auth before coding begins
+- Repo: https://github.com/mRichardson777/gridlock
+- Token stored in git remote URL (credential embedded)
+- Workspace is connected and first push completed
