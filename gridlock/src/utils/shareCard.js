@@ -1,6 +1,6 @@
 // Generates the Wordle-style share text for Gridlock results
 
-const SOLVED_EMOJI = '🟥';
+const SOLVED_EMOJI = '🟦';
 const FAILED_EMOJI = '⬜';
 
 /**
